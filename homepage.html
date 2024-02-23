@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css">
+    <title>myToDoList</title>
+</head>
+<body>  
+    <div class="full-page">
+        <div class="one-third-centered">
+            <form id="taskForm" class="input-location" method="post">
+                <label for="task">Enter Task:</label><br>
+                <input class="task-input" id="taskInput" type="text" name="task" placeholder="Enter task"><br>
+
+                <button type="submit">Add Task</button>
+            </form>
+
+            <!-- render all tasks -->
+            <div class="infinite-scroll" id="taskList">
+                
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        async function deleteTask(taskID) { // =========================================================
+            console.log("DELETING W/ ID: ", taskID)
+            try {
+                const response = await fetch(`http://localhost:3000/delete-task/${taskID}`,
+                {
+                    method: "DELETE"
+            });
+                if (!response.ok){
+                    throw new Error("Issue deleting task.")
+                }
+                getTasks(); 
+
+            }
+            catch (err) {
+                throw new Error ("Isusue with response.")
+            }
+        }
+
+
+        async function getTasks() { // =========================================================
+        try {
+            const response = await fetch(`http://localhost:3000/get-tasks`,
+                {
+                    method: "GET"
+            });
+            const tasks = await response.json();
+            renderTasks(tasks.tasks)
+        }
+        catch (err){
+            throw new Error("Issue with Fetching Tasks")
+        }
+    }
+
+
+        // Function to render tasks
+        function renderTasks(tasks) { // =========================================================
+        const taskListElement = document.getElementById('taskList');
+        if (taskListElement) { 
+            // Clear existing content
+            taskListElement.innerHTML = '';
+            // Append tasks
+            tasks.forEach(task => {
+
+                // Create DOM element for individual task
+                const taskElement = document.createElement('div');
+                taskElement.textContent = task.task;
+                taskElement.classList.add("list-element")
+
+                // Create Delete Button on DOM for every task
+                const deleteButton = document.createElement('button');
+
+                // delete a task when button is clicked
+                deleteButton.addEventListener("click", () => {deleteTask(task.id)}) 
+
+                deleteButton.textContent = 'X';
+                deleteButton.classList.add("delete-button")
+
+                // Append Button To Div's Children
+                taskElement.appendChild(deleteButton);
+
+                // Add new Div to Parent Div
+                taskListElement.appendChild(taskElement);
+            });
+        } else {
+            console.error('Task list element not found');
+        }
+    }
+
+    async function addTask(event) {  // ========================================================================================
+        event.preventDefault();
+        const task = document.getElementById("taskInput").value;
+        document.getElementById("taskInput").value = "";
+
+            try {
+            const response = await fetch("http://localhost:3000/send-task", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ task }),
+            });
+
+            if (!response.ok) {
+            throw new Error("Failed to send task");
+            }
+
+            const data = await response.json();
+            console.log("Task sent successfully:", data);
+
+            // After sending the task, refetch tasks and render again
+            const tasksResponse = await fetch("http://localhost:3000/get-tasks");
+            if (!tasksResponse.ok) {
+            throw new Error("Failed to fetch tasks");
+            }
+            const tasks = await tasksResponse.json();
+            renderTasks(tasks.tasks);
+        } catch (error) {
+            console.error("Error sending task:", error);
+        }
+        }
+
+        // Fetch tasks when the page loads
+        window.addEventListener('load', () => getTasks())
+
+        // Event listener for submitting tasks
+        document.getElementById('taskForm').addEventListener('submit', event => addTask(event)) 
+    </script>
+
+</body>
+</html>
